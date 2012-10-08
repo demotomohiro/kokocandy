@@ -1,6 +1,6 @@
-" kokocandy (Kokoro no candy)
+" kokocandy
 " Maintainer: Tomohiro
-" Last Change: 2012 oct 6
+" Last Change: 2012 oct 9
 "
 " This is a automatic demo video downloading and converting script.
 " Best way to watch a demo is joining demo party.
@@ -14,7 +14,7 @@
 " Because some mobile phones don't support h264 and big screen size videos. 
 " This script optionally convert video so that your mobile phone can play it.
 "
-" But such video might have encoding noise or smaller than your screen size. 
+" But such video have encoding noise or smaller than your screen size. 
 " And they require big internet traffics.(1MB demo.zip vs 100MB captured video)
 " So I recommend you to joining demo party or execute demo if possible.
 "
@@ -28,13 +28,18 @@
 " scene on my bed:)
 "
 " Features:
+" - Input file is only URL list.
+"   So even if your demo video collection were gone,
+"   you can rebuild it from URL list file with one command.
+"   You can share favorite demo list with your friends.
+"	Your friend can get demo videos with one command.
 " - Find link to best quality video from pouet's prod page. 
-" - Supporting downloading from
+" - Support downloading from
 "     youtube(using youtube-dl)
 "     http/ftp server(using wget)
 "   Not supporting capped.tv and demoscene.tv
 " - If downloaded file is compressed with zip,
-"   it decompress the file automatically.
+"   it is decompressed automatically.
 " - If there is any error while downloading or converting video,
 "   it never be placed in destination directory.
 " - When you change URL list or options after executing this script,
@@ -46,6 +51,9 @@
 " - Following programs must be executable in command line.
 "
 " Vim ver7.3 or newer
+"   - http://www.vim.org/
+"   - For Japanese MS windows users:
+"     http://www.kaoriya.net/software/vim
 "
 " wget
 "   - Access internet.
@@ -102,30 +110,41 @@
 "   when there are multiple [foo video bar] link in prod page.
 "   Prod page in pouet is not uniform:(
 " 4 Download video from found URL
-"   It is download in g:kokocandy_temp_dir
+"   It is downloaded in g:kokocandy_temp_dir
 "   URL can be link to youtube or http/ftp server.
 "   You can set downloading command or option in
 "   g:kokocandy_cmd_youtube_dl	for downloading from youtube
 "   or
-"	g:kokocandy_cmd_download	for http/ftp server.
+"   g:kokocandy_cmd_download	for http/ftp server.
 " 5 Convert video (optional)
 "   Convert video format, codec or size using ffmpeg.
-"	You can set command or parameter for conversion in
-"	g:kokocandy_cmd_vconv_ps1	and
-"	g:kokocandy_cmd2_vconv_ps1	for first pass,
-"	g:kokocandy_cmd_vconv_ps2	and
-"	g:kokocandy_cmd2_vconv_ps2	for second pass.
+"   You can set command or parameter for conversion in
+"   g:kokocandy_cmd_vconv_ps1	and
+"   g:kokocandy_cmd2_vconv_ps1	for first pass,
+"   g:kokocandy_cmd_vconv_ps2	and
+"   g:kokocandy_cmd2_vconv_ps2	for second pass.
 " 6 Move video to destination directory.
+"   Directories are created according to video path template 'g:kokocandy_path_tmpl'
+"   File names are also renamed in same way.
 "
 " TODO:
-" - Rewrite this with other language(C++&Qt, C++&Boost, python etc)
-"   vim script don't have enough functions to make this kind of program.
+" - Rewrite this script with other language(C++&Qt, C++&Boost, python etc)
+"   vim script don't have enough functions to easily improve this.
 " - Read http://pouet.net/faq.php#syndication 
 " - Better logging
 " - Support downloading demo file(not video).
 " - Download every available video and choose best one
 " - Parallel downloading and conversion.
 "
+" Why I was named 'kokocandy':
+" I thought this script is a bit similar to Mind candy.
+" http://www.mindcandydvd.com/
+" Both help watching demo as video.
+" If you have a list of demo included in Mind candy,
+" you can make a Mind candy for mobile without extra features with this script.
+" 'Kokoro no candy' means 'Mind candy' in japanese.
+" kokocandy is short for 'Kokoro no candy'.
+" 
 "
 " COOL DEMO DOWNLOADING SHOCK TO
 " 'Japanese yAkuza Society for Rights of Authors, Composers and pure audios' s BRAIN!
