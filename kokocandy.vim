@@ -6,16 +6,41 @@
 " Best way to watch a demo is joining demo party.
 " And next best way is executing a demo at realtime.
 " If you can't do them, you need to get captured demo video to watch.
+" This script help you to downloading demo videos.
+"
+" It also help converting video format or screen size.
+" When you want to enjoy demo scene with mobile phone,
+" it might not be able to play some videos.
+" Because some mobile phones don't support h264 and big screen size videos. 
+" This script optionally convert video so that your mobile phone can play it.
+"
 " But such video might have encoding noise or smaller than your screen size. 
 " And they require big internet traffics.(1MB demo.zip vs 100MB captured video)
-" This script was made for help downloading and converting demo videos.
+" So I recommend you to joining demo party or execute demo if possible.
 "
-" It read a list of URL and download best quality videos.
+" This script read a list of URL and download best quality videos.
 " It optionally convert video to specific format or size with ffmpeg.
 " URL must be a demo page in pouet.net
+" e.g.
+" http://pouet.net/prod.php?which=60278
 "
 " I wrote this script to put demo video in my phone so that I can enjoy demo
 " scene on my bed:)
+"
+" Features:
+" - Find link to best quality video from pouet's prod page. 
+" - Supporting downloading from
+"     youtube(using youtube-dl)
+"     http/ftp server(using wget)
+"   Not supporting capped.tv and demoscene.tv
+" - If downloaded file is compressed with zip,
+"   it decompress the file automatically.
+" - If there is any error while downloading or converting video,
+"   it never be placed in destination directory.
+" - When you change URL list or options after executing this script,
+"   it won't download/convert same videos again
+"   if the video exists in distination directory.
+"
 "
 " Dependencies:
 " - Following programs must be executable in command line.
@@ -54,7 +79,8 @@
 "   If there are errors, check your internet,
 "   'Dependencies' program can working correctly
 "   and options in kokocandy.cfg.
-"   Retry execute the command. This script don't download already downloaded videos.
+"   Then, retry the command.
+"   This script ignores already successfully downloaded/converted videos.
 "
 " 2. Versatile way
 "   If you know vim script language, you can make URL list in your way and
@@ -69,7 +95,7 @@
 "   These infos are used to make a file name and directory name to put demo
 "   video.
 "   You can set video path template to 'g:kokocandy_path_tmpl'
-"   If the video file is already exist in distination directory,
+"   If the video file is already exist in destination directory,
 "   following steps are skipped.
 " 3 It also find link to best quality video from that html file.
 "   But it sometimes get second/third best one
@@ -95,7 +121,10 @@
 " - Rewrite this with other language(C++&Qt, C++&Boost, python etc)
 "   vim script don't have enough functions to make this kind of program.
 " - Read http://pouet.net/faq.php#syndication 
+" - Better logging
 " - Support downloading demo file(not video).
+" - Download every available video and choose best one
+" - Parallel downloading and conversion.
 "
 "
 " COOL DEMO DOWNLOADING SHOCK TO
@@ -180,11 +209,22 @@ if g:kokocandy_is_convert_video
 		echo "If you don't convert videos, :let g:kokocandy_is_convert_video=0"
 		finish
 	endif
-	"ffmpeg command for 2 pass encoding
+	"ffmpeg command for 2 pass encoding.
+	"Following option is optimal for my phone(SoftBank 103p):)
 	call s:InitGblVar("g:kokocandy_cmd_vconv_ps1", 'ffmpeg -i ')
-	call s:InitGblVar("g:kokocandy_cmd2_vconv_ps1", ' -f mp4 -c:v mpeg4 -b:v 2048k -pass 1 -vf scale=-1:360 -an -y NUL ')
+	call s:InitGblVar("g:kokocandy_cmd2_vconv_ps1", ' -f mp4 -c:v mpeg4 -b:v 2048k -r 30 -pass 1 -vf scale="if(gte(a\,640/360)\,min(640\,iw)+1)-1:if(lt(a\,640/360)\,min(360\,ih)+1)-1" -an -y NUL ')
+	"If conversion with default option was failed, conversion with
+	"back up option is executed and pass 2 command is also executed with back
+	"up option.
+	"If back up option is empty, backup conversion is not executed.
+	"
+	"ffmpeg sometimes fail if you dont set -r option(frame rate).
+	"And such case might be able to solved by setting -r 25 option..
+	call s:InitGblVar("g:kokocandy_cmd2_vconv_ps1_bkup", '')
+
 	call s:InitGblVar("g:kokocandy_cmd_vconv_ps2", 'ffmpeg -i ')
-	call s:InitGblVar("g:kokocandy_cmd2_vconv_ps2", ' -f mp4 -c:v mpeg4 -b:v 2048k -pass 2 -vf scale=-1:360 ')
+	call s:InitGblVar("g:kokocandy_cmd2_vconv_ps2", ' -f mp4 -c:v mpeg4 -b:v 2048k -r 30 -pass 2 -vf scale="if(gte(a\,640/360)\,min(640\,iw)+1)-1:if(lt(a\,640/360)\,min(360\,ih)+1)-1" ')
+	call s:InitGblVar("g:kokocandy_cmd2_vconv_ps2_bkup", '')
 endif
 
 call s:InitGblVar("g:kokocandy_cmd_unzip", 'unzip -o ')
@@ -457,25 +497,37 @@ endfunction
 function! s:ConvertVideo(file, outFile)
 	call s:EchoProgress("Converting ".a:file)
 
-	let ropt = ""
+	let isUseBkupOpt = 0
 
-	let cmd1 = g:kokocandy_cmd_vconv_ps1." ".shellescape(a:file, 1)." ".ropt.g:kokocandy_cmd2_vconv_ps1
-	call s:ExecCmd(cmd1)
-
-	if v:shell_error
-		"If failed, setting frame rate might solve it.
-		let ropt = " -r 25 "
-		let cmd1 = g:kokocandy_cmd_vconv_ps1." ".shellescape(a:file, 1)." ".ropt.g:kokocandy_cmd2_vconv_ps1
+	if g:kokocandy_cmd_vconv_ps1!=""
+		let cmd1 =
+		\	g:kokocandy_cmd_vconv_ps1." ".shellescape(a:file, 1)." ".
+		\	g:kokocandy_cmd2_vconv_ps1
 		call s:ExecCmd(cmd1)
+
+		if v:shell_error
+			"If failed, retry conversion with back up option if it is available!
+			let isUseBkupOpt =
+			\	(g:kokocandy_cmd2_vconv_ps1_bkup!="") && (g:kokocandy_cmd2_vconv_ps2_bkup!="")
+			if isUseBkupOpt
+				let cmd1 =
+				\	g:kokocandy_cmd_vconv_ps1." ".shellescape(a:file, 1)." ".
+				\	g:kokocandy_cmd2_vconv_ps1_bkup
+				call s:ExecCmd(cmd1)
+			endif
+		endif
+
+		if v:shell_error
+			call s:EchoError("Failed to convert '".a:file."' in pass 1")
+			call delete(a:outFile)
+			return 1
+		endif
 	endif
 
-	if v:shell_error
-		call s:EchoError("Failed to convert '".a:file."' in pass 1")
-		call delete(a:outFile)
-		return 1
-	endif
-
-	let cmd2 = g:kokocandy_cmd_vconv_ps2." ".shellescape(a:file, 1)." ".ropt.g:kokocandy_cmd2_vconv_ps2." ".shellescape(a:outFile, 1)
+	let cmd2 =
+	\	g:kokocandy_cmd_vconv_ps2." ".shellescape(a:file, 1)." ".
+	\	(isUseBkupOpt ? g:kokocandy_cmd2_vconv_ps2_bkup : g:kokocandy_cmd2_vconv_ps2)." ".
+	\	shellescape(a:outFile, 1)
 	call s:ExecCmd(cmd2)
 
 	if v:shell_error
