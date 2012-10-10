@@ -204,7 +204,7 @@ call s:InitGblVar("g:kokocandy_is_show_verbose", 0)
 
 "If value is 1, convert video to specific format.
 "0 to skipping conversion.
-call s:InitGblVar("g:kokocandy_is_convert_video", 1)
+call s:InitGblVar("g:kokocandy_is_convert_video", 0)
 
 "Suffix for temporary file
 "call s:InitGblVar("g:kokocandy_tmp_suffix", '.temp')
